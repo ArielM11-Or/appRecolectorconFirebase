@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="refresh" content="0; url=./web/index.html" />
+  <title>Sistema de Monitoreo GPS - Oruro</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background-color: #0f172a;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(0, 242, 254, 0.15);
+      border-top-color: #00f2fe;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #00f2fe;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+    a {
+      color: #00f2fe;
+      text-decoration: underline;
+      font-size: 13px;
+    }
+  </style>
+  <script>
+    window.location.replace("./web/index.html");
+  </script>
+</head>
+<body>
+  <div class="spinner"></div>
+  <h1>🚛 Sistema GPS Recolectores</h1>
+  <p>Cargando panel de monitoreo en tiempo real...</p>
+  <p><a href="./web/index.html">Haz clic aquí si no redirige automáticamente</a></p>
+</body>
+</html>
