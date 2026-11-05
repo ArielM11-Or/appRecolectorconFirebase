@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema GPS Recolectores – Oruro, Bolivia</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Chart.js 4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Firebase Compat CDN (v10) -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-database-compat.js"></script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0f172a;
+      --card-bg: rgba(15, 23, 42, 0.88);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --cyan: #00f2fe;
+      --blue: #4facfe;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --violet: #a855f7;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ========================================================
+       TOP NAVIGATION BAR
+       ======================================================== */
+    #top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 2000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      font-size: 26px;
+      filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.5));
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--cyan);
+      letter-spacing: 0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Switch de Módulos (tras login) */
+    .module-tabs {
+      display: none;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 30px;
+      padding: 4px;
+      gap: 4px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 7px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: rgba(0, 242, 254, 0.2);
+      color: var(--cyan);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.25);
+    }
+
+    /* Selector de unidades multi-camión */
+    .unit-tab-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+
+    .unit-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    .unit-tab-btn.active {
+      background: rgba(0, 242, 254, 0.2);
+      border-color: var(--cyan);
+      color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0, 242, 254, 0.35);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-login {
+      background: rgba(0, 242, 254, 0.15);
+      border: 1px solid rgba(0, 242, 254, 0.4);
+      color: var(--cyan);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-login:hover {
+      background: var(--cyan);
+      color: #0f172a;
+      box-shadow: 0 0 14px rgba(0, 242, 254, 0.4);
+    }
+
+    .btn-public-view {
+      display: none;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-public-view:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn-logout {
+      display: none;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-logout:hover {
+      background: var(--red);
+      color: #fff;
+    }
+
+    /* ========================================================
+       VISTA 1: PÚBLICA (MAPA LEAFLET FULLSCREEN)
+       ======================================================== */
+    #public-view {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      display: block;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #09101d;
+    }
+
+    /* Marcadores de Camión Animados (Estilo sistemaMonitoreo) */
+    .truck-marker-custom {
+      background: none !important;
+      border: none !important;
+    }
+    .custom-marker-container {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .state-badge-float {
+      position: absolute;
+      top: -26px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      z-index: 10;
+      pointer-events: none;
+      letter-spacing: 0.3px;
+    }
+    .marker-circle-wrapper {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 3px solid #ffffff;
+      position: relative;
+      transition: transform 0.6s ease-out, background-color 0.3s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+    }
+    .marker-circle-wrapper svg {
+      width: 28px;
+      height: 28px;
+      display: block;
+    }
+    .marker-pulse-ring {
+      position: absolute;
+      top: -3px;
+      left: -3px;
+      width: calc(100% + 6px);
+      height: calc(100% + 6px);
+      border-radius: 50%;
+      border: 2px solid;
+      animation: pulse-wave 1.6s infinite ease-out;
+      opacity: 0;
+      pointer-events: none;
+    }
+    @keyframes pulse-wave {
+      0% {
+        transform: scale(0.9);
+        opacity: 0.9;
+      }
+      50% {
+        opacity: 0.45;
+      }
+      100% {
+        transform: scale(2.2);
+        opacity: 0;
+      }
+    }
+    .pulse-collecting {
+      animation: collect-pulse 1.2s infinite alternate ease-in-out !important;
+    }
+    @keyframes collect-pulse {
+      0% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+      100% {
+        transform: scale(1.08);
+        filter: brightness(1.2);
+      }
+    }
+
+    /* Tarjeta Flotante de Telemetría */
+    .floating-telemetry {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 1500;
+      background: var(--card-bg);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 18px 22px;
+      width: 320px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 242, 254, 0.08);
+      transition: all 0.3s;
+    }
+
+    .tel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .tel-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--cyan);
+    }
+
+    .tel-placa {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .badge-service {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid;
+    }
+
+    .badge-service.active {
+      color: var(--green);
+      background: rgba(34, 197, 94, 0.15);
+      border-color: var(--green);
+    }
+
+    .badge-service.inactive {
+      color: var(--red);
+      background: rgba(239, 68, 68, 0.15);
+      border-color: var(--red);
+    }
+
+    .service-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    .tel-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 10px 0;
+    }
+
+    .tel-body {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .state-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid;
+    }
+
+    .state-en_camino    { color: #22c55e; background: rgba(34,197,94,0.15);  border-color: #22c55e; }
+    .state-recolectando { color: #f59e0b; background: rgba(245,158,11,0.15); border-color: #f59e0b; }
+    .state-comprimiendo { color: #a855f7; background: rgba(168,85,247,0.15); border-color: #a855f7; }
+    .state-parado       { color: #ef4444; background: rgba(239,68,68,0.15);  border-color: #ef4444; }
+
+    .tel-speed {
+      text-align: right;
+    }
+
+    .tel-speed-num {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .tel-speed-unit {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .tel-footer {
+      font-size: 11px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* ========================================================
+       MODAL DE LOGIN
+       ======================================================== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      z-index: 3000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-card {
+      background: #1e293b;
+      border: 1px solid rgba(0, 242, 254, 0.3);
+      border-radius: 20px;
+      padding: 32px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(0, 242, 254, 0.15);
+      position: relative;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-close-btn:hover {
+      color: var(--text);
+    }
+
+    .modal-logo {
+      font-size: 40px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--cyan);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .modal-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 22px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: var(--cyan);
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--cyan);
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 1px;
+      border: none;
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.9;
+    }
+
+    .error-msg {
+      color: var(--red);
+      font-size: 12px;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+
+    /* ========================================================
+       VISTA 2: MÓDULOS PROTEGIDOS (CONDUCTOR Y DASHBOARD)
+       ======================================================== */
+    #protected-view {
+      display: none;
+      padding-top: 80px;
+      padding-bottom: 40px;
+      min-height: 100vh;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    /* MÓDULO A: CONDUCTOR / OPERATIVO */
+    #module-conductor {
+      display: block;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(12px);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    /* Grid de Estados 2x2 para Chofer */
+    .estados-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .btn-estado {
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px solid;
+      border-radius: 14px;
+      padding: 22px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-estado .emoji {
+      font-size: 32px;
+    }
+
+    .btn-estado .label {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .btn-estado.active {
+      transform: scale(1.02);
+      box-shadow: 0 0 16px currentColor;
+    }
+
+    /* Turnos selector */
+    .turno-selector-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .turno-chip {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .turno-chip.active {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--cyan);
+      color: var(--cyan);
+    }
+
+    .btn-iniciar-turno {
+      width: 100%;
+      background: var(--cyan);
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+
+    .btn-finalizar-turno {
+      width: 100%;
+      background: var(--red);
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 16px;
+      border-radius: 14px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 1px;
+      margin-top: 10px;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .kpi-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .kpi-emoji { font-size: 24px; }
+    .kpi-val { font-size: 26px; font-weight: 800; color: var(--cyan); }
+    .kpi-lbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* MÓDULO B: DASHBOARD ADMINISTRATIVO */
+    #module-dashboard {
+      display: none;
+    }
+
+    .filters-bar {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .filter-item label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .filter-item input, .filter-item select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      min-width: 160px;
+    }
+
+    .filter-item select option {
+      background: #1e293b;
+    }
+
+    .btn-apply-filters {
+      background: var(--cyan);
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 20px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .dash-columns {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .dash-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-container {
+      position: relative;
+      height: 280px;
+    }
+
+    /* Tabla */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .badge-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid;
+    }
+
+    .badge-status.progress {
+      color: var(--green);
+      background: rgba(34, 197, 94, 0.12);
+      border-color: var(--green);
+    }
+
+    .badge-status.finalized {
+      color: var(--muted);
+      background: rgba(148, 163, 184, 0.12);
+      border-color: rgba(148, 163, 184, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================
+       TOP NAVIGATION BAR
+       ======================================================== -->
+  <header id="top-nav">
+    <div class="brand">
+      <span class="brand-logo">🚛</span>
+      <div>
+        <div class="brand-title">GPS Recolectores</div>
+        <div class="brand-subtitle">Oruro, Bolivia · Monitoreo Inteligente</div>
+      </div>
+    </div>
+
+    <!-- Módulos Switch (aparece tras login) -->
+    <div class="module-tabs" id="module-tabs">
+      <button class="tab-btn active" id="tab-conductor-btn" onclick="switchModule('conductor')">
+        🚛 Operativo Conductor
+      </button>
+      <button class="tab-btn" id="tab-dash-btn" onclick="switchModule('dashboard')">
+        📊 Dashboard Combustible
+      </button>
+    </div>
+
+    <div class="nav-actions">
+      <!-- Botón Modo Público (volver al mapa) -->
+      <button class="btn-public-view" id="btn-public-view" onclick="togglePublicMap()">
+        🗺️ Ver Mapa Público
+      </button>
+
+      <!-- Botón Iniciar Sesión (Vista pública) -->
+      <button class="btn-login" id="btn-login-open" onclick="openLoginModal()">
+        🔐 Iniciar Sesión
+      </button>
+
+      <!-- Botón Cerrar Sesión -->
+      <button class="btn-logout" id="btn-logout" onclick="handleLogout()">
+        🚪 Salir
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       VISTA 1: PÚBLICA (MAPA LEAFLET EN TIEMPO REAL)
+       ======================================================== -->
+  <div id="public-view">
+    <div id="map"></div>
+
+    <!-- Selector flotante multi-camión -->
+    <div style="position:fixed; top:76px; left:20px; z-index:1500; display:flex; gap:8px; align-items:center; background:rgba(15,23,42,0.85); backdrop-filter:blur(10px); padding:6px 14px; border-radius:30px; border:1px solid var(--card-border); flex-wrap:wrap;">
+      <span style="font-size:12px; font-weight:700; color:var(--muted);">Unidad:</span>
+      <button class="unit-tab-btn active" id="btn-unit-TODOS" onclick="switchUnitWeb('TODOS')">🌐 Todas</button>
+      <button class="unit-tab-btn" id="btn-unit-REC-01" onclick="switchUnitWeb('REC-01')"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; margin-right:5px; box-shadow:0 0 6px #38bdf8;"></span>🚛 REC-01 <span style="font-size:10px; opacity:0.8;">(Azul)</span></button>
+      <button class="unit-tab-btn" id="btn-unit-REC-02" onclick="switchUnitWeb('REC-02')"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#facc15; margin-right:5px; box-shadow:0 0 6px #facc15;"></span>🚛 REC-02 <span style="font-size:10px; opacity:0.8;">(Amarillo)</span></button>
+      <button class="unit-tab-btn" id="btn-unit-REC-03" onclick="switchUnitWeb('REC-03')"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#fb923c; margin-right:5px; box-shadow:0 0 6px #fb923c;"></span>🚛 REC-03 <span style="font-size:10px; opacity:0.8;">(Naranja)</span></button>
+    </div>
+
+    <!-- Tarjeta Flotante de Telemetría -->
+    <div class="floating-telemetry" id="telemetry-card">
+      <!-- Vista Unidad Individual -->
+      <div id="tel-single-view" style="display:none;">
+        <div class="tel-header">
+          <div>
+            <div class="tel-title" id="tel-id">REC-01</div>
+            <div class="tel-placa" id="tel-placa">Placa: 1234-ABC</div>
+            <div style="font-size:11px; color:#93c5fd; font-weight:600; margin-top:2px;" id="tel-street">📍 Oruro, Bolivia</div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+            <div class="badge-service inactive" id="tel-service-badge">
+              <span class="service-dot"></span>
+              <span id="tel-service-text">Fuera de ruta</span>
+            </div>
+            <a href="javascript:void(0)" onclick="switchUnitWeb('TODOS')" style="color:var(--cyan); font-size:11px; text-decoration:none; font-weight:700;">🌐 Ver todas</a>
+          </div>
+        </div>
+
+        <div class="tel-divider"></div>
+
+        <div class="tel-body">
+          <div>
+            <span class="state-badge state-parado" id="tel-state-badge">⏸️ Parado</span>
+          </div>
+          <div class="tel-speed">
+            <div class="tel-speed-num" id="tel-speed-num">0</div>
+            <div class="tel-speed-unit">km/h</div>
+          </div>
+        </div>
+
+        <div class="tel-footer">
+          <span>📍 Oruro, Bolivia</span>
+          <span id="tel-updated-time">Actualizado: —</span>
+        </div>
+      </div>
+
+      <!-- Vista Flota Completa (Todas las unidades) -->
+      <div id="tel-fleet-view">
+        <div class="tel-header">
+          <div>
+            <div class="tel-title">🌐 Flota General Oruro</div>
+            <div class="tel-placa" id="tel-fleet-subtitle">Monitoreo en vivo de 3 unidades</div>
+          </div>
+          <div class="badge-service active" id="tel-fleet-badge">
+            <span class="service-dot"></span>
+            <span id="tel-fleet-active-text">3 en servicio</span>
+          </div>
+        </div>
+
+        <div class="tel-divider"></div>
+
+        <div id="tel-fleet-list" style="display:flex; flex-direction:column; gap:8px; margin:8px 0;">
+          <!-- Se llena dinámicamente con las unidades -->
+        </div>
+
+        <div class="tel-footer">
+          <span>📍 Oruro, Bolivia</span>
+          <span id="tel-fleet-updated-time">Actualizado: —</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       VISTA 2: MÓDULOS INTERNOS PROTEGIDOS
+       ======================================================== -->
+  <div id="protected-view">
+    <!-- ----------------------------------------------------
+         MÓDULO A: CONDUCTOR (GPS Y TELEMETRÍA)
+         ---------------------------------------------------- -->
+    <section id="module-conductor">
+      <!-- Estado de Turno y Controles -->
+      <div class="glass-card" id="conductor-turn-box">
+        <div class="card-title">Jornada Operativa</div>
+        <div id="turn-setup-area">
+          <div style="margin-bottom:14px;">
+            <label class="form-label">Unidad Asignada</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="unit-tab-btn active" id="cond-unit-REC-01" onclick="selectConductorUnit('REC-01')"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#38bdf8; margin-right:5px;"></span>🚛 REC-01 (Azul · 1234-ABC)</button>
+              <button type="button" class="unit-tab-btn" id="cond-unit-REC-02" onclick="selectConductorUnit('REC-02')"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#facc15; margin-right:5px;"></span>🚛 REC-02 (Amarillo · 5678-DEF)</button>
+              <button type="button" class="unit-tab-btn" id="cond-unit-REC-03" onclick="selectConductorUnit('REC-03')"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#fb923c; margin-right:5px;"></span>🚛 REC-03 (Naranja · 9012-GHI)</button>
+            </div>
+          </div>
+          <div class="turno-selector-row">
+            <div class="turno-chip active" id="chip-mañana" onclick="selectTurno('mañana')">☀️ Mañana</div>
+            <div class="turno-chip" id="chip-tarde" onclick="selectTurno('tarde')">🌅 Tarde</div>
+            <div class="turno-chip" id="chip-noche" onclick="selectTurno('noche')">🌙 Noche</div>
+          </div>
+          <button class="btn-iniciar-turno" onclick="iniciarTurnoWeb()">🚀 INICIAR TURNO</button>
+        </div>
+
+        <div id="turn-active-area" style="display: none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+            <div>
+              <span style="font-weight:700; color:var(--cyan); font-size:14px;" id="lbl-active-turno-id">TURNO ACTIVO</span>
+              <div style="font-size:12px; color:var(--muted); margin-top:2px;" id="lbl-conductor-camion-info">Camión: REC-01 (1234-ABC)</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button type="button" id="btn-toggle-auto-web" onclick="toggleModoAutoWeb()" style="padding:6px 12px; border-radius:20px; font-size:11px; font-weight:800; border:1px solid var(--cyan); background:rgba(0,242,254,0.15); color:var(--cyan); cursor:pointer;">⚡ AUTO GPS: ON</button>
+              <span class="badge-status progress">🟢 EN PROGRESO</span>
+            </div>
+          </div>
+
+          <div id="banner-comprimiendo-web" style="display:none; background:rgba(168,85,247,0.15); border:1px solid #a855f7; border-radius:10px; padding:8px 12px; font-size:12px; color:#e9d5ff; margin-bottom:12px; text-align:center;">
+            ⚙️ Estado fijo en Comprimiendo. Volverá a cálculo automático al superar 5 km/h.
+          </div>
+
+          <!-- 4 Botones Táctiles Grandes de Estado -->
+          <div class="estados-grid">
+            <button class="btn-estado state-en_camino" id="btn-estado-en_camino" onclick="cambiarEstadoWeb('en_camino', true)">
+              <span class="emoji">🚛</span>
+              <span class="label">En Camino</span>
+            </button>
+            <button class="btn-estado state-recolectando" id="btn-estado-recolectando" onclick="cambiarEstadoWeb('recolectando', true)">
+              <span class="emoji">🗑️</span>
+              <span class="label">Recolectando</span>
+            </button>
+            <button class="btn-estado state-comprimiendo" id="btn-estado-comprimiendo" onclick="cambiarEstadoWeb('comprimiendo', true)">
+              <span class="emoji">⚙️</span>
+              <span class="label">Comprimiendo</span>
+            </button>
+            <button class="btn-estado state-parado" id="btn-estado-parado" onclick="cambiarEstadoWeb('parado', true)">
+              <span class="emoji">⏸️</span>
+              <span class="label">Parado / Ralentí</span>
+            </button>
+          </div>
+
+          <button class="btn-finalizar-turno" onclick="finalizarTurnoWeb()">🏁 FINALIZAR TURNO</button>
+        </div>
+      </div>
+
+      <!-- KPIs Conductor en Vivo -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-emoji">📍</span>
+          <span class="kpi-val" id="cond-km">0.00</span>
+          <span class="kpi-lbl">KM Recorridos</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-emoji">⛽</span>
+          <span class="kpi-val" id="cond-litros">0.00</span>
+          <span class="kpi-lbl">Litros Estimados</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-emoji">🔄</span>
+          <span class="kpi-val" id="cond-compresiones">0</span>
+          <span class="kpi-lbl">Compresiones</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-emoji">⏱️</span>
+          <span class="kpi-val" id="cond-tiempo">0</span>
+          <span class="kpi-lbl">Tiempo Total (min)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------
+         MÓDULO B: DASHBOARD ADMINISTRATIVO DE COMBUSTIBLE
+         ---------------------------------------------------- -->
+    <section id="module-dashboard">
+      <div class="glass-card">
+        <div class="card-title">Filtros de Búsqueda</div>
+        <div class="filters-bar">
+          <div class="filter-item">
+            <label>Fecha</label>
+            <input type="date" id="filter-date" />
+          </div>
+          <div class="filter-item">
+            <label>Turno</label>
+            <select id="filter-turno">
+              <option value="">Todos</option>
+              <option value="mañana">Mañana ☀️</option>
+              <option value="tarde">Tarde 🌅</option>
+              <option value="noche">Noche 🌙</option>
+            </select>
+          </div>
+          <button class="btn-apply-filters" onclick="loadDashboardData()">🔍 Aplicar Filtros</button>
+        </div>
+      </div>
+
+      <!-- KPIs Dashboard -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-emoji">⛽</span>
+          <span class="kpi-val" id="dash-kpi-litros">0.00</span>
+          <span class="kpi-lbl">Litros Totales</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-emoji">📍</span>
+          <span class="kpi-val" id="dash-kpi-km">0.00</span>
+          <span class="kpi-lbl">KM Recorridos</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-emoji">🔄</span>
+          <span class="kpi-val" id="dash-kpi-compresiones">0</span>
+          <span class="kpi-lbl">Total Compresiones</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-emoji">📊</span>
+          <span class="kpi-val" id="dash-kpi-eficiencia">0.00</span>
+          <span class="kpi-lbl">Rendimiento (L/km)</span>
+        </div>
+      </div>
+
+      <div class="dash-columns">
+        <!-- Gráfico de Consumo -->
+        <div class="glass-card">
+          <div class="card-title">Consumo por Estado Operativo</div>
+          <div class="chart-container">
+            <canvas id="fuelChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Tabla Historial -->
+        <div class="glass-card">
+          <div class="card-title">Historial de Turnos</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Turno</th>
+                  <th>KM</th>
+                  <th>Litros</th>
+                  <th>Comp.</th>
+                  <th>T. Min</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="turnos-tbody">
+                <tr><td colspan="7" style="text-align:center; color:var(--muted); padding:20px;">Sin datos cargados.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ========================================================
+       MODAL DE LOGIN CON FIREBASE AUTH
+       ======================================================== -->
+  <div class="modal-overlay" id="login-modal" onclick="onModalOverlayClick(event)">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closeLoginModal()">✕</button>
+      <div class="modal-logo">🚛</div>
+      <div class="modal-title">Acceso Personal</div>
+      <div class="modal-subtitle">Conductor & Administración · Oruro</div>
+
+      <div class="form-group">
+        <label class="form-label">Correo Electrónico</label>
+        <input type="email" class="form-input" id="modal-email" placeholder="usuario@empresa.com" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" class="form-input" id="modal-password" placeholder="••••••••" />
+      </div>
+
+      <button class="btn-submit" onclick="submitLogin()">INGRESAR AL SISTEMA</button>
+      <div class="error-msg" id="modal-error"></div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- ========================================================
+       LÓGICA JAVASCRIPT DEL SISTEMA
+       ======================================================== -->
+  <script>
+    // 1. Firebase Configuración
+    const firebaseConfig = {
+      apiKey: "AIzaSyClVtCYv6bMIOi9vuN_KiUL4bgKuyGG57o",
+      authDomain: "appmonitoreo-87a54.firebaseapp.com",
+      databaseURL: "https://appmonitoreo-87a54-default-rtdb.firebaseio.com",
+      projectId: "appmonitoreo-87a54",
+      storageBucket: "appmonitoreo-87a54.firebasestorage.app",
+      messagingSenderId: "889911178649",
+      appId: "1:889911178649:web:83a8f739a2884751020f08"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db   = firebase.firestore();
+    const rtdb = firebase.database();
+
+    const ORURO_COORDS = [-17.9647, -67.1060];
+    let activeCamionId = 'TODOS';
+    let currentRtdbRef = null;
+    let truckMarkers = {};
+
+    const CAMIONES_MAP = {
+      'REC-01': { placa: '1234-ABC' },
+      'REC-02': { placa: '5678-DEF' },
+      'REC-03': { placa: '9012-GHI' },
+    };
+
+    // 2. Leaflet Map Init con OpenStreetMap
+    const map = L.map('map', { zoomControl: true }).setView(ORURO_COORDS, 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const TRUCK_COLORS = {
+      'REC-01': {
+        name: 'Azul',
+        bg: '#0284c7',
+        border: '#38bdf8',
+        ring: '#38bdf8',
+        glow: 'rgba(2, 132, 199, 0.7)',
+        truckFill: '#0369a1'
+      },
+      'REC-02': {
+        name: 'Amarillo',
+        bg: '#eab308',
+        border: '#facc15',
+        ring: '#fde047',
+        glow: 'rgba(234, 179, 8, 0.7)',
+        truckFill: '#ca8a04'
+      },
+      'REC-03': {
+        name: 'Naranja',
+        bg: '#f97316',
+        border: '#fb923c',
+        ring: '#fdba74',
+        glow: 'rgba(249, 115, 22, 0.7)',
+        truckFill: '#ea580c'
+      }
+    };
+    const DEFAULT_TRUCK_COLOR = {
+      name: 'Púrpura',
+      bg: '#8b5cf6',
+      border: '#c084fc',
+      ring: '#c084fc',
+      glow: 'rgba(139, 92, 246, 0.7)',
+      truckFill: '#7c3aed'
+    };
+
+    function createTruckIconWeb(id, rawEstado, isMulti) {
+      const color = TRUCK_COLORS[id] || DEFAULT_TRUCK_COLOR;
+      const estadoKey = rawEstado && ESTADOS[rawEstado] ? rawEstado : 'parado';
+      const estInfo = ESTADOS[estadoKey] || ESTADOS.parado;
+      const labelText = isMulti ? (id + ' • ' + (estInfo.label === 'En Camino' ? 'Avanzando' : estInfo.label)) : (estInfo.label === 'En Camino' ? 'Avanzando' : estInfo.label);
+      const isStopped = estadoKey === 'parado';
+      const isCollecting = estadoKey === 'recolectando';
+
+      const ringHtml = !isStopped
+        ? '<div class="marker-pulse-ring" style="border-color: ' + color.ring + ';"></div>'
+        : '';
+
+      const wrapperAnimClass = isCollecting ? 'pulse-collecting' : '';
+
+      const svgHtml =
+        '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
+          '<rect x="30" y="10" width="40" height="25" fill="#f8fafc" rx="4"/>' +
+          '<rect x="25" y="35" width="50" height="55" fill="' + color.truckFill + '" rx="4"/>' +
+          '<circle cx="20" cy="30" r="8" fill="#1e293b"/>' +
+          '<circle cx="80" cy="30" r="8" fill="#1e293b"/>' +
+          '<circle cx="20" cy="80" r="8" fill="#1e293b"/>' +
+          '<circle cx="80" cy="80" r="8" fill="#1e293b"/>' +
+          '<path d="M40,15 L60,15 L65,30 L35,30 Z" fill="#38bdf8"/>' +
+        '</svg>';
+
+      const html =
+        '<div class="custom-marker-container">' +
+          '<div class="state-badge-float" style="background: ' + estInfo.color + ';">' + labelText + '</div>' +
+          '<div class="marker-circle-wrapper ' + wrapperAnimClass + '" style="background-color: ' + color.bg + '; box-shadow: 0 0 16px ' + color.glow + ';">' +
+            ringHtml +
+            svgHtml +
+          '</div>' +
+        '</div>';
+
+      return L.divIcon({
+        html: html,
+        className: 'truck-marker-custom',
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+        popupAnchor: [0, -28]
+      });
+    }
+
+    // Configuración y etiquetas de estados
+    const ESTADOS = {
+      en_camino:    { label: 'En Camino', emoji: '🚛', color: '#16a34a', cls: 'state-en_camino' },
+      recolectando: { label: 'Recolectando', emoji: '🗑️', color: '#f59e0b', cls: 'state-recolectando' },
+      comprimiendo: { label: 'Comprimiendo', emoji: '⚙️', color: '#8b5cf6', cls: 'state-comprimiendo' },
+      parado:       { label: 'Parado / Ralentí', emoji: '⏸️', color: '#ef4444', cls: 'state-parado' },
+    };
+
+    // Memoria caché de direcciones para Oruro
+    const geocodeCacheWeb = {};
+    const KNOWN_LOCATIONS_WEB = {
+      '-17.965,-67.106': 'Calle 1 de Noviembre (Distrito 1)',
+      '-17.971,-67.112': 'Calle Potosí (Distrito 1)',
+      '-17.958,-67.098': 'Av. 6 de Agosto (Distrito 3)',
+      '-17.965,-67.110': 'Plaza 10 de Febrero (Centro Histórico)',
+    };
+
+    function getApproxStreetWeb(lat, lng) {
+      if (lat == null || lng == null) return 'Oruro, Bolivia';
+      const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+      return geocodeCacheWeb[key] || KNOWN_LOCATIONS_WEB[key] || null;
+    }
+
+    async function resolveStreetWeb(lat, lng, callback) {
+      if (lat == null || lng == null) return;
+      const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+      if (geocodeCacheWeb[key]) {
+        callback(geocodeCacheWeb[key]);
+        return;
+      }
+      if (KNOWN_LOCATIONS_WEB[key]) {
+        geocodeCacheWeb[key] = KNOWN_LOCATIONS_WEB[key];
+        callback(KNOWN_LOCATIONS_WEB[key]);
+        return;
+      }
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+          headers: { 'User-Agent': 'AppRecolectorOruro/1.0', 'Accept-Language': 'es' }
+        });
+        const data = await res.json();
+        const addr = data.address || {};
+        const street = addr.road || addr.pedestrian || addr.footway || addr.path;
+        const suburb = addr.suburb || addr.neighbourhood || addr.city_district;
+        let result = street && suburb ? `${street} (${suburb})` : (street || suburb || 'Zona Urbana, Oruro');
+        geocodeCacheWeb[key] = result;
+        callback(result);
+      } catch (e) {
+        callback('Oruro, Bolivia');
+      }
+    }
+
+    // 3. Listener en Tiempo Real con Firebase Realtime Database (RTDB)
+    function attachTruckListener(truckId) {
+      if (currentRtdbRef) {
+        currentRtdbRef.off();
+      }
+      activeCamionId = truckId;
+
+      if (truckId === 'TODOS') {
+        currentRtdbRef = rtdb.ref('camiones');
+        currentRtdbRef.on('value', (snapshot) => {
+          const data = snapshot.val() || {};
+          const allTrucks = Object.keys(CAMIONES_MAP).map(id => {
+            const raw = data[id] || {};
+            const lat = raw.lat != null ? raw.lat : (raw.ubicacion && raw.ubicacion.latitude != null ? raw.ubicacion.latitude : ORURO_COORDS[0]);
+            const lng = raw.lng != null ? raw.lng : (raw.ubicacion && raw.ubicacion.longitude != null ? raw.ubicacion.longitude : ORURO_COORDS[1]);
+            const dir = raw.direccion || getApproxStreetWeb(lat, lng) || 'Oruro, Bolivia';
+
+            return {
+              id,
+              placa: raw.placa || CAMIONES_MAP[id].placa,
+              activo: raw.activo ?? false,
+              estado: raw.estado || 'parado',
+              velocidad: raw.velocidad || 0,
+              lat,
+              lng,
+              direccion: dir,
+              ultimaActualizacion: raw.ultimaActualizacion || null,
+            };
+          });
+          updateFleetMapAndTelemetry(allTrucks);
+        }, (err) => {
+          console.warn('Error escuchando RTDB camiones:', err.message);
+        });
+      } else {
+        currentRtdbRef = rtdb.ref('camiones/' + truckId);
+        currentRtdbRef.on('value', (snapshot) => {
+          const raw = snapshot.val();
+          const lat = raw && raw.lat != null ? raw.lat : ORURO_COORDS[0];
+          const lng = raw && raw.lng != null ? raw.lng : ORURO_COORDS[1];
+          const dir = (raw && raw.direccion) || getApproxStreetWeb(lat, lng) || 'Oruro, Bolivia';
+
+          const d = raw ? { ...raw, direccion: dir } : {
+            id: truckId,
+            placa: (CAMIONES_MAP[truckId] && CAMIONES_MAP[truckId].placa) || `${truckId}-PLACA`,
+            activo: false,
+            estado: 'parado',
+            velocidad: 0,
+            lat,
+            lng,
+            direccion: dir,
+            ultimaActualizacion: null,
+          };
+          updateSingleMapAndTelemetry(d);
+        }, (err) => {
+          console.warn('Error escuchando RTDB en web:', err.message);
+        });
+      }
+    }
+
+    function switchUnitWeb(unitId) {
+      activeCamionId = unitId;
+      ['TODOS', 'REC-01', 'REC-02', 'REC-03'].forEach(id => {
+        const btn = document.getElementById('btn-unit-' + id);
+        if (btn) btn.classList.toggle('active', id === unitId);
+        const condBtn = document.getElementById('cond-unit-' + id);
+        if (condBtn) condBtn.classList.toggle('active', id === unitId);
+      });
+      attachTruckListener(unitId);
+    }
+
+    function selectConductorUnit(unitId) {
+      switchUnitWeb(unitId);
+    }
+
+    // Iniciar con la vista de toda la flota
+    attachTruckListener(activeCamionId);
+
+    function updateFleetMapAndTelemetry(allTrucks) {
+      const singleEl = document.getElementById('tel-single-view');
+      const fleetEl  = document.getElementById('tel-fleet-view');
+      if (singleEl) singleEl.style.display = 'none';
+      if (fleetEl)  fleetEl.style.display = 'block';
+
+      const bounds = [];
+      const currentIds = {};
+
+      allTrucks.forEach(c => {
+        currentIds[c.id] = true;
+        const color = TRUCK_COLORS[c.id] || DEFAULT_TRUCK_COLOR;
+        const st = ESTADOS[c.estado] || ESTADOS.parado;
+        if (c.lat != null && c.lng != null) {
+          bounds.push([c.lat, c.lng]);
+          const popupHtml = `
+            <div style="background:#1e293b;color:#f1f5f9;padding:10px 14px;border-radius:10px;font-family:sans-serif;min-width:180px;">
+              <div style="font-weight:800;font-size:15px;color:${color.border};margin-bottom:2px;">🚛 ${c.id} (${color.name})</div>
+              <div style="font-size:12px;color:#94a3b8;">Placa: <b style="color:#f1f5f9;">${c.placa}</b></div>
+              <div style="font-size:11px;color:#93c5fd;font-weight:600;margin:3px 0 6px 0;">📍 ${c.direccion || 'Oruro, Bolivia'}</div>
+              <div style="margin:4px 0;">
+                <span class="state-badge ${st.cls}">${st.emoji} ${st.label}</span>
+              </div>
+              <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Velocidad: <b style="color:#f1f5f9;">${Math.round(c.velocidad)} km/h</b></div>
+              <div style="margin-top:8px;">
+                <button onclick="switchUnitWeb('${c.id}')" style="background:${color.border};color:#0f172a;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:800;cursor:pointer;">Ver Unidad</button>
+              </div>
+            </div>
+          `;
+
+          const icon = createTruckIconWeb(c.id, c.estado, true);
+          if (!truckMarkers[c.id]) {
+            truckMarkers[c.id] = L.marker([c.lat, c.lng], { icon: icon }).addTo(map);
+          } else {
+            truckMarkers[c.id].setLatLng([c.lat, c.lng]);
+            truckMarkers[c.id].setIcon(icon);
+          }
+          truckMarkers[c.id].bindPopup(popupHtml);
+        }
+      });
+
+      // Limpiar marcadores obsoletos
+      Object.keys(truckMarkers).forEach(id => {
+        if (!currentIds[id]) {
+          map.removeLayer(truckMarkers[id]);
+          delete truckMarkers[id];
+        }
+      });
+
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      } else if (bounds.length === 1) {
+        map.panTo(bounds[0], { animate: true, duration: 0.6 });
+      }
+
+      // KPIs de la flota
+      const activos = allTrucks.filter(c => c.activo).length;
+      const activeTextEl = document.getElementById('tel-fleet-active-text');
+      if (activeTextEl) activeTextEl.textContent = `${activos} en servicio`;
+
+      const subTitleEl = document.getElementById('tel-fleet-subtitle');
+      if (subTitleEl) subTitleEl.textContent = `Monitoreo en vivo de ${allTrucks.length} unidades`;
+
+      const listContainer = document.getElementById('tel-fleet-list');
+      if (listContainer) {
+        listContainer.innerHTML = allTrucks.map(c => {
+          const st = ESTADOS[c.estado] || ESTADOS.parado;
+          // Si no tiene calle cargada, consultar en segundo plano
+          if (!c.direccion || c.direccion === 'Oruro, Bolivia') {
+            resolveStreetWeb(c.lat, c.lng, (resolved) => {
+              const el = document.getElementById('fleet-dir-' + c.id);
+              if (el) el.textContent = '📍 ' + resolved;
+            });
+          }
+
+          return `
+            <div onclick="switchUnitWeb('${c.id}')" style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:8px 12px; cursor:pointer; gap:8px;">
+              <div style="flex:1.4; min-width:110px;">
+                <div style="font-weight:800; font-size:13px; color:${color.border}; display:flex; align-items:center; gap:6px;">
+                  <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${color.bg}; box-shadow:0 0 6px ${color.border};"></span>
+                  🚛 ${c.id} <span style="font-size:10px; opacity:0.85;">(${color.name})</span>
+                </div>
+                <div style="font-size:11px; color:var(--muted);">${c.placa}</div>
+                <div style="font-size:10px; color:#93c5fd; font-weight:600; margin-top:2px;" id="fleet-dir-${c.id}">📍 ${c.direccion || 'Oruro, Bolivia'}</div>
+              </div>
+              <div style="flex:1; text-align:center;">
+                <span class="state-badge ${st.cls}" style="padding:3px 10px; font-size:11px;">${st.emoji} ${st.label}</span>
+              </div>
+              <div style="text-align:right; min-width:70px;">
+                <div style="font-weight:800; font-size:13px; color:var(--text);">${Math.round(c.velocidad)} km/h</div>
+                <div style="font-size:10px; color:${color.border}; font-weight:700;">Ver ➔</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      const updatedEl = document.getElementById('tel-fleet-updated-time');
+      if (updatedEl) updatedEl.textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-BO');
+    }
+
+    function updateSingleMapAndTelemetry(data) {
+      const singleEl = document.getElementById('tel-single-view');
+      const fleetEl  = document.getElementById('tel-fleet-view');
+      if (singleEl) singleEl.style.display = 'block';
+      if (fleetEl)  fleetEl.style.display = 'none';
+
+      const { id, placa, activo, estado, velocidad, ultimaActualizacion, direccion } = data;
+      const color = TRUCK_COLORS[id] || DEFAULT_TRUCK_COLOR;
+      const st = ESTADOS[estado] || ESTADOS.parado;
+
+      // Limpiar otros marcadores para dejar sólo la unidad enfocada
+      Object.keys(truckMarkers).forEach(k => {
+        if (k !== id) {
+          map.removeLayer(truckMarkers[k]);
+          delete truckMarkers[k];
+        }
+      });
+
+      const lat = data.lat != null ? data.lat : (data.ubicacion && data.ubicacion.latitude);
+      const lng = data.lng != null ? data.lng : (data.ubicacion && data.ubicacion.longitude);
+      const streetStr = direccion || getApproxStreetWeb(lat, lng) || 'Oruro, Bolivia';
+
+      if (lat != null && lng != null) {
+        const latlng = [lat, lng];
+        const popupHtml = `
+          <div style="background:#1e293b;color:#f1f5f9;padding:10px 14px;border-radius:10px;font-family:sans-serif;min-width:180px;">
+            <div style="font-weight:800;font-size:15px;color:${color.border};margin-bottom:2px;">🚛 ${id || 'REC-01'} (${color.name})</div>
+            <div style="font-size:12px;color:#94a3b8;">Placa: <b style="color:#f1f5f9;">${placa || '1234-ABC'}</b></div>
+            <div style="font-size:11px;color:#93c5fd;font-weight:600;margin:3px 0 6px 0;">📍 ${streetStr}</div>
+            <div style="margin:4px 0;">
+              <span class="state-badge ${st.cls}">${st.emoji} ${st.label}</span>
+            </div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:4px;">Velocidad: <b style="color:#f1f5f9;">${Math.round(velocidad || 0)} km/h</b></div>
+          </div>
+        `;
+
+        const icon = createTruckIconWeb(id, estado, false);
+        if (!truckMarkers[id]) {
+          truckMarkers[id] = L.marker(latlng, { icon: icon }).addTo(map);
+        } else {
+          truckMarkers[id].setLatLng(latlng);
+          truckMarkers[id].setIcon(icon);
+        }
+        truckMarkers[id].bindPopup(popupHtml);
+        map.panTo(latlng, { animate: true, duration: 0.6 });
+      }
+
+      // Actualizar tarjeta individual flotante
+      document.getElementById('tel-id').textContent = id || 'REC-01';
+      document.getElementById('tel-placa').textContent = 'Placa: ' + (placa || '1234-ABC');
+      const streetEl = document.getElementById('tel-street');
+      if (streetEl) streetEl.textContent = '📍 ' + streetStr;
+      document.getElementById('tel-speed-num').textContent = Math.round(velocidad || 0);
+
+      const serviceBadge = document.getElementById('tel-service-badge');
+      const serviceText  = document.getElementById('tel-service-text');
+      if (activo) {
+        serviceBadge.className = 'badge-service active';
+        serviceText.textContent = 'En servicio';
+      } else {
+        serviceBadge.className = 'badge-service inactive';
+        serviceText.textContent = 'Fuera de ruta';
+      }
+
+      const stateBadge = document.getElementById('tel-state-badge');
+      stateBadge.className = `state-badge ${st.cls}`;
+      stateBadge.innerHTML = `${st.emoji} ${st.label}`;
+
+      if (ultimaActualizacion) {
+        let d;
+        if (typeof ultimaActualizacion === 'number') {
+          d = new Date(ultimaActualizacion);
+        } else if (typeof ultimaActualizacion === 'string') {
+          d = new Date(ultimaActualizacion);
+        } else if (ultimaActualizacion.toDate) {
+          d = ultimaActualizacion.toDate();
+        } else if (ultimaActualizacion.seconds) {
+          d = new Date(ultimaActualizacion.seconds * 1000);
+        } else {
+          d = new Date(ultimaActualizacion);
+        }
+        if (!isNaN(d.getTime())) {
+          document.getElementById('tel-updated-time').textContent = 'Actualizado: ' + d.toLocaleTimeString('es-BO');
+        }
+      }
+    }
+
+    // 4. Modal de Login
+    function openLoginModal() {
+      document.getElementById('modal-error').textContent = '';
+      document.getElementById('login-modal').style.display = 'flex';
+    }
+
+    function closeLoginModal() {
+      document.getElementById('login-modal').style.display = 'none';
+    }
+
+    function onModalOverlayClick(e) {
+      if (e.target.id === 'login-modal') {
+        closeLoginModal();
+      }
+    }
+
+    async function submitLogin() {
+      const email = document.getElementById('modal-email').value.trim();
+      const pass  = document.getElementById('modal-password').value;
+      const errEl = document.getElementById('modal-error');
+      errEl.textContent = '';
+
+      if (!email || !pass) {
+        errEl.textContent = 'Ingresa email y contraseña.';
+        return;
+      }
+
+      try {
+        await auth.signInWithEmailAndPassword(email, pass);
+        closeLoginModal();
+      } catch (err) {
+        const code = err.code || '';
+        if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+          errEl.textContent = 'Credenciales incorrectas.';
+        } else {
+          errEl.textContent = 'Error al ingresar: ' + err.message;
+        }
+      }
+    }
+
+    async function handleLogout() {
+      if (activeTurnoId) {
+        if (!confirm('Tienes un turno en progreso. ¿Deseas cerrar sesión de todos modos?')) return;
+      }
+      await auth.signOut();
+    }
+
+    // 5. Auth State Observer
+    let currentUser = null;
+    auth.onAuthStateChanged((user) => {
+      currentUser = user;
+      const moduleTabs   = document.getElementById('module-tabs');
+      const btnLogin     = document.getElementById('btn-login-open');
+      const btnPublic    = document.getElementById('btn-public-view');
+      const btnLogout    = document.getElementById('btn-logout');
+      const protectedView= document.getElementById('protected-view');
+      const publicView   = document.getElementById('public-view');
+
+      if (user) {
+        // Authenticated mode: show tabs and logout
+        moduleTabs.style.display = 'flex';
+        btnLogin.style.display = 'none';
+        btnPublic.style.display = 'block';
+        btnLogout.style.display = 'block';
+
+        // Unlock protected view by default
+        showProtectedView();
+      } else {
+        // Unauthenticated public mode
+        moduleTabs.style.display = 'none';
+        btnLogin.style.display = 'flex';
+        btnPublic.style.display = 'none';
+        btnLogout.style.display = 'none';
+
+        protectedView.style.display = 'none';
+        publicView.style.display = 'block';
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+    });
+
+    function showProtectedView() {
+      document.getElementById('public-view').style.display = 'none';
+      document.getElementById('protected-view').style.display = 'block';
+      document.getElementById('btn-public-view').textContent = '🗺️ Ver Mapa Público';
+      switchModule('conductor');
+    }
+
+    function togglePublicMap() {
+      const publicView = document.getElementById('public-view');
+      const protectedView = document.getElementById('protected-view');
+      const btn = document.getElementById('btn-public-view');
+
+      if (publicView.style.display === 'none') {
+        publicView.style.display = 'block';
+        protectedView.style.display = 'none';
+        btn.textContent = '📊 Ir a Módulos';
+        setTimeout(() => map.invalidateSize(), 200);
+      } else {
+        publicView.style.display = 'none';
+        protectedView.style.display = 'block';
+        btn.textContent = '🗺️ Ver Mapa Público';
+      }
+    }
+
+    function switchModule(moduleName) {
+      const tabCond = document.getElementById('tab-conductor-btn');
+      const tabDash = document.getElementById('tab-dash-btn');
+      const modCond = document.getElementById('module-conductor');
+      const modDash = document.getElementById('module-dashboard');
+
+      if (moduleName === 'conductor') {
+        tabCond.classList.add('active');
+        tabDash.classList.remove('active');
+        modCond.style.display = 'block';
+        modDash.style.display = 'none';
+      } else {
+        tabCond.classList.remove('active');
+        tabDash.classList.add('active');
+        modCond.style.display = 'none';
+        modDash.style.display = 'block';
+        loadDashboardData();
+      }
+    }
+
+    // ========================================================
+    // MÓDULO A: LÓGICA DE CONDUCTOR, GPS Y COMBUSTIBLE
+    // ========================================================
+    let selectedTurnoKey = 'mañana';
+    let activeTurnoId = null;
+    let activeEstado = 'parado';
+    let estadoStartTime = Date.now();
+    let kmRecorridos = 0;
+    let tiempoTransitoMin = 0;
+    let tiempoRecoleccionMin = 0;
+    let tiempoRalentiMin = 0;
+    let tiempoCompresionMin = 0;
+    let ciclosCompresion = 0;
+    let litrosEstimados = 0;
+    let lastPosition = null;
+    let geoWatchId = null;
+
+    function selectTurno(tKey) {
+      selectedTurnoKey = tKey;
+      ['mañana', 'tarde', 'noche'].forEach(k => {
+        document.getElementById(`chip-${k}`).classList.toggle('active', k === tKey);
+      });
+    }
+
+    // Fórmula exacta de combustible
+    function calcularLitros(km, recol, ralenti, ciclos, compres) {
+      const total = (km * 0.35) + (recol * 0.08) + (ralenti * 0.04) + (ciclos * 0.25) + (compres * 0.12);
+      return Math.round(total * 100) / 100;
+    }
+
+    // Haversine formula
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    let modoAutomaticoWeb = true;
+    let isManualComprimiendoWeb = false;
+
+    function toggleModoAutoWeb() {
+      modoAutomaticoWeb = !modoAutomaticoWeb;
+      const btn = document.getElementById('btn-toggle-auto-web');
+      if (btn) {
+        if (modoAutomaticoWeb) {
+          btn.textContent = '⚡ AUTO GPS: ON';
+          btn.style.background = 'rgba(0,242,254,0.15)';
+          btn.style.borderColor = 'var(--cyan)';
+          btn.style.color = 'var(--cyan)';
+        } else {
+          btn.textContent = '✋ MODO MANUAL';
+          btn.style.background = 'rgba(245,158,11,0.15)';
+          btn.style.borderColor = '#f59e0b';
+          btn.style.color = '#f59e0b';
+        }
+      }
+    }
+
+    function buildTurnoId(turno) {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const cleanCamion = (activeCamionId || 'REC-01').replace(/[^A-Za-z0-9]/g, '');
+      const suffix = turno === 'mañana' ? 'M' : (turno === 'tarde' ? 'T' : 'N');
+      return `TURNO-${yyyy}${mm}${dd}-${cleanCamion}-${suffix}`;
+    }
+
+    async function iniciarTurnoWeb() {
+      const turnoId = buildTurnoId(selectedTurnoKey);
+      const now = new Date();
+      const fecha = now.toISOString().split('T')[0];
+
+      activeTurnoId = turnoId;
+      activeEstado = 'en_camino';
+      isManualComprimiendoWeb = false;
+      estadoStartTime = Date.now();
+      kmRecorridos = 0;
+      tiempoTransitoMin = 0;
+      tiempoRecoleccionMin = 0;
+      tiempoRalentiMin = 0;
+      tiempoCompresionMin = 0;
+      ciclosCompresion = 0;
+      litrosEstimados = 0;
+      lastPosition = null;
+
+      try {
+        await db.collection('turnos_recoleccion').doc(turnoId).set({
+          camionId: activeCamionId,
+          fecha: fecha,
+          turno: selectedTurnoKey,
+          estadoTurno: 'en_progreso',
+          horaInicio: firebase.firestore.FieldValue.serverTimestamp(),
+          horaFin: null,
+          kmRecorridos: 0,
+          tiempoTransitoMin: 0,
+          tiempoRecoleccionMin: 0,
+          tiempoRalentiMin: 0,
+          tiempoCompresionMin: 0,
+          ciclosCompresion: 0,
+          litrosEstimados: 0,
+        });
+
+        const truckPlaca = (CAMIONES_MAP[activeCamionId] && CAMIONES_MAP[activeCamionId].placa) || '1234-ABC';
+
+        await rtdb.ref('camiones/' + activeCamionId).update({
+          id: activeCamionId,
+          placa: truckPlaca,
+          activo: true,
+          turnoActivoId: turnoId,
+          estado: 'en_camino',
+          lat: ORURO_COORDS[0],
+          lng: ORURO_COORDS[1],
+          velocidad: 0,
+          ultimaActualizacion: Date.now(),
+        });
+
+        document.getElementById('turn-setup-area').style.display = 'none';
+        document.getElementById('turn-active-area').style.display = 'block';
+        document.getElementById('lbl-active-turno-id').textContent = turnoId;
+        const lblInfo = document.getElementById('lbl-conductor-camion-info');
+        if (lblInfo) lblInfo.textContent = `Camión: ${activeCamionId} (${truckPlaca})`;
+        highlightActiveStateBtn('en_camino');
+
+        startWebGeolocation();
+        updateConductorKPIs();
+      } catch (err) {
+        alert('Error iniciando turno: ' + err.message);
+      }
+    }
+
+    function acumularTiempoOperativo() {
+      const now = Date.now();
+      const elapsedMin = (now - estadoStartTime) / 60000;
+      if (activeEstado === 'en_camino') tiempoTransitoMin += elapsedMin;
+      else if (activeEstado === 'recolectando') tiempoRecoleccionMin += elapsedMin;
+      else if (activeEstado === 'comprimiendo') tiempoCompresionMin += elapsedMin;
+      else if (activeEstado === 'parado') tiempoRalentiMin += elapsedMin;
+      estadoStartTime = now;
+
+      litrosEstimados = calcularLitros(
+        kmRecorridos,
+        tiempoRecoleccionMin,
+        tiempoRalentiMin,
+        ciclosCompresion,
+        tiempoCompresionMin
+      );
+    }
+
+    function cambiarEstadoWeb(nuevoEstado, esManual = true) {
+      if (!activeTurnoId) return;
+      acumularTiempoOperativo();
+
+      if (esManual) {
+        if (nuevoEstado === 'comprimiendo') {
+          isManualComprimiendoWeb = true;
+          ciclosCompresion += 1;
+          const banner = document.getElementById('banner-comprimiendo-web');
+          if (banner) banner.style.display = 'block';
+        } else {
+          isManualComprimiendoWeb = false;
+          const banner = document.getElementById('banner-comprimiendo-web');
+          if (banner) banner.style.display = 'none';
+        }
+      }
+
+      activeEstado = nuevoEstado;
+
+      // 1. Feedback visual inmediato instantáneo (0ms)
+      highlightActiveStateBtn(nuevoEstado);
+      updateConductorKPIs();
+
+      // 2. Transmisión directa a Firebase Realtime Database (RTDB)
+      const truckPlaca = (CAMIONES_MAP[activeCamionId] && CAMIONES_MAP[activeCamionId].placa) || '1234-ABC';
+      rtdb.ref('camiones/' + activeCamionId).update({
+        id: activeCamionId,
+        placa: truckPlaca,
+        estado: nuevoEstado,
+        ultimaActualizacion: Date.now(),
+      }).catch((e) => console.warn('Error en RTDB cambiarEstado:', e.message));
+
+      // 3. Sincronización en segundo plano con Firestore (reportes de turnos)
+      db.collection('turnos_recoleccion').doc(activeTurnoId).set({
+        tiempoTransitoMin,
+        tiempoRecoleccionMin,
+        tiempoRalentiMin,
+        tiempoCompresionMin,
+        ciclosCompresion,
+        litrosEstimados,
+      }, { merge: true }).catch((e) => {
+        console.warn('Sincronización en segundo plano pospuesta (cuota/red):', e.message);
+      });
+    }
+
+    function highlightActiveStateBtn(estado) {
+      ['en_camino', 'recolectando', 'comprimiendo', 'parado'].forEach(st => {
+        const btn = document.getElementById(`btn-estado-${st}`);
+        if (btn) btn.classList.toggle('active', st === estado);
+      });
+    }
+
+    function startWebGeolocation() {
+      if (!navigator.geolocation) {
+        alert('La Geolocation API no está soportada en este navegador.');
+        return;
+      }
+
+      geoWatchId = navigator.geolocation.watchPosition((pos) => {
+        const { latitude, longitude, speed } = pos.coords;
+        const speedKmh = Math.max(0, Math.round((speed || 0) * 3.6));
+
+        if (lastPosition) {
+          const dist = haversineKm(lastPosition.lat, lastPosition.lng, latitude, longitude);
+          kmRecorridos += dist;
+        }
+        lastPosition = { lat: latitude, lng: longitude };
+
+        acumularTiempoOperativo();
+
+        // Desbloquear 'comprimiendo' manual si la velocidad supera 5 km/h
+        if (isManualComprimiendoWeb && speedKmh > 5) {
+          isManualComprimiendoWeb = false;
+          const banner = document.getElementById('banner-comprimiendo-web');
+          if (banner) banner.style.display = 'none';
+        }
+
+        // Inferencia automática de estado por velocidad GPS
+        if (modoAutomaticoWeb && !isManualComprimiendoWeb) {
+          let inferredEstado = activeEstado;
+          if (speedKmh > 20) {
+            inferredEstado = 'en_camino';
+          } else if (speedKmh >= 3 && speedKmh <= 20) {
+            inferredEstado = 'recolectando';
+          } else {
+            inferredEstado = 'parado';
+          }
+          if (inferredEstado !== activeEstado) {
+            activeEstado = inferredEstado;
+            highlightActiveStateBtn(activeEstado);
+          }
+        }
+
+        updateConductorKPIs();
+
+        // Transmisión continua a Firebase Realtime Database (RTDB)
+        rtdb.ref('camiones/' + activeCamionId).update({
+          id: activeCamionId,
+          lat: latitude,
+          lng: longitude,
+          velocidad: speedKmh,
+          estado: activeEstado,
+          ultimaActualizacion: Date.now(),
+        }).catch((e) => console.warn('Error en RTDB GPS:', e.message));
+
+        if (activeTurnoId) {
+          db.collection('turnos_recoleccion').doc(activeTurnoId).update({
+            kmRecorridos,
+            litrosEstimados,
+          }).catch(console.error);
+        }
+      }, (err) => {
+        console.warn('Geolocation error:', err.message);
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000,
+      });
+    }
+
+    function updateConductorKPIs() {
+      const tiempoTotal = Math.round(tiempoTransitoMin + tiempoRecoleccionMin + tiempoRalentiMin + tiempoCompresionMin);
+      document.getElementById('cond-km').textContent = kmRecorridos.toFixed(2);
+      document.getElementById('cond-litros').textContent = litrosEstimados.toFixed(2);
+      document.getElementById('cond-compresiones').textContent = ciclosCompresion;
+      document.getElementById('cond-tiempo').textContent = tiempoTotal;
+    }
+
+    async function finalizarTurnoWeb() {
+      if (!confirm('¿Estás seguro de que deseas finalizar este turno de recolección?')) return;
+      acumularTiempoOperativo();
+
+      if (geoWatchId) {
+        navigator.geolocation.clearWatch(geoWatchId);
+        geoWatchId = null;
+      }
+
+      try {
+        await db.collection('turnos_recoleccion').doc(activeTurnoId).update({
+          estadoTurno: 'finalizado',
+          horaFin: firebase.firestore.FieldValue.serverTimestamp(),
+          kmRecorridos,
+          tiempoTransitoMin,
+          tiempoRecoleccionMin,
+          tiempoRalentiMin,
+          tiempoCompresionMin,
+          ciclosCompresion,
+          litrosEstimados,
+        });
+
+        await rtdb.ref('camiones/' + activeCamionId).update({
+          id: activeCamionId,
+          activo: false,
+          estado: 'parado',
+          velocidad: 0,
+          turnoActivoId: '',
+          ultimaActualizacion: Date.now(),
+        });
+
+        activeTurnoId = null;
+        document.getElementById('turn-setup-area').style.display = 'block';
+        document.getElementById('turn-active-area').style.display = 'none';
+        alert('Turno finalizado exitosamente.');
+      } catch (err) {
+        alert('Error al finalizar turno: ' + err.message);
+      }
+    }
+
+    // ========================================================
+    // MÓDULO B: LÓGICA DASHBOARD ADMINISTRATIVO
+    // ========================================================
+    let chartInstance = null;
+
+    function initFuelChart() {
+      const ctx = document.getElementById('fuelChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['Tránsito', 'Recolección', 'Ralentí', 'Compresión'],
+          datasets: [{
+            label: 'Litros Estimados',
+            data: [0, 0, 0, 0],
+            backgroundColor: [
+              'rgba(34, 197, 94, 0.75)',
+              'rgba(245, 158, 11, 0.75)',
+              'rgba(239, 68, 68, 0.75)',
+              'rgba(168, 85, 247, 0.75)',
+            ],
+            borderColor: ['#22c55e', '#f59e0b', '#ef4444', '#a855f7'],
+            borderWidth: 1.5,
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} Litros`
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#94a3b8' },
+              grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+              ticks: { color: '#94a3b8', callback: (v) => v.toFixed(1) + ' L' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+
+    async function loadDashboardData() {
+      if (!chartInstance) initFuelChart();
+
+      const fDate  = document.getElementById('filter-date').value;
+      const fTurno = document.getElementById('filter-turno').value;
+      const tbody  = document.getElementById('turnos-tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--muted);">Cargando turnos…</td></tr>';
+
+      try {
+        let q = db.collection('turnos_recoleccion');
+        if (fDate)  q = q.where('fecha', '==', fDate);
+        if (fTurno) q = q.where('turno', '==', fTurno);
+
+        const snap = await q.limit(50).get();
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (docs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--muted);">No hay turnos registrados con los filtros aplicados.</td></tr>';
+          document.getElementById('dash-kpi-litros').textContent = '0.00';
+          document.getElementById('dash-kpi-km').textContent = '0.00';
+          document.getElementById('dash-kpi-compresiones').textContent = '0';
+          document.getElementById('dash-kpi-eficiencia').textContent = '0.00';
+          chartInstance.data.datasets[0].data = [0, 0, 0, 0];
+          chartInstance.update();
+          return;
+        }
+
+        let totLitros = 0, totKm = 0, totComp = 0;
+        let sumTrans = 0, sumRecol = 0, sumRal = 0, sumCompr = 0;
+
+        docs.forEach(d => {
+          totLitros += (d.litrosEstimados || 0);
+          totKm     += (d.kmRecorridos || 0);
+          totComp   += (d.ciclosCompresion || 0);
+          sumTrans  += (d.tiempoTransitoMin || 0);
+          sumRecol  += (d.tiempoRecoleccionMin || 0);
+          sumRal    += (d.tiempoRalentiMin || 0);
+          sumCompr  += (d.tiempoCompresionMin || 0);
+        });
+
+        // Estimación de combustible por estado según la fórmula
+        const totMin = sumTrans + sumRecol + sumRal + sumCompr;
+        const lTrans = totMin > 0 ? (sumTrans / totMin) * totLitros : 0;
+        const lRecol = totMin > 0 ? (sumRecol / totMin) * totLitros : 0;
+        const lRal   = totMin > 0 ? (sumRal / totMin) * totLitros : 0;
+        const lCompr = totMin > 0 ? (sumCompr / totMin) * totLitros : 0;
+
+        document.getElementById('dash-kpi-litros').textContent = totLitros.toFixed(2);
+        document.getElementById('dash-kpi-km').textContent = totKm.toFixed(2);
+        document.getElementById('dash-kpi-compresiones').textContent = totComp;
+        document.getElementById('dash-kpi-eficiencia').textContent = totKm > 0 ? (totLitros / totKm).toFixed(2) : '0.00';
+
+        chartInstance.data.datasets[0].data = [lTrans, lRecol, lRal, lCompr];
+        chartInstance.update();
+
+        const turnoIcons = { 'mañana': '☀️ Mañana', 'tarde': '🌅 Tarde', 'noche': '🌙 Noche' };
+        tbody.innerHTML = docs.map(d => {
+          const tTotal = Math.round((d.tiempoTransitoMin || 0) + (d.tiempoRecoleccionMin || 0) + (d.tiempoRalentiMin || 0) + (d.tiempoCompresionMin || 0));
+          const isProg = d.estadoTurno === 'en_progreso';
+          return `
+            <tr>
+              <td>${d.fecha || '—'}</td>
+              <td>${turnoIcons[d.turno] || d.turno || '—'}</td>
+              <td>${(d.kmRecorridos || 0).toFixed(2)}</td>
+              <td style="color:var(--cyan); font-weight:700;">${(d.litrosEstimados || 0).toFixed(2)}</td>
+              <td>${d.ciclosCompresion || 0}</td>
+              <td>${tTotal}</td>
+              <td><span class="badge-status ${isProg ? 'progress' : 'finalized'}">${isProg ? '🟢 En curso' : '✅ Finalizado'}</span></td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error('Error cargando turnos en dashboard:', err);
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--red); padding:20px;">Error al cargar datos: ${err.message}</td></tr>`;
+      }
+    }
+  </script>
+</body>
+</html>

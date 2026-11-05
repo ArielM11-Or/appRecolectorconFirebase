@@ -1,18 +1,41 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+/**
+ * Root Layout — Expo Router
+ *
+ * Flujo de navegación:
+ *   / (index)  →  Pantalla pública ciudadana (mapa en tiempo real, sin login)
+ *   /panel     →  Módulos protegidos (Operativo + Dashboard Admin)
+ *
+ * El login se maneja como Modal desde la pantalla pública.
+ * NO hay redirección automática a /login; la app arranca siempre en el mapa.
+ */
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { LogBox } from 'react-native';
+import { AuthProvider } from '@/context/AuthContext';
+import { TurnoProvider } from '@/context/TurnoContext';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+LogBox.ignoreLogs([
+  '@firebase/firestore',
+  'Using maximum backoff delay',
+  'RESOURCE_EXHAUSTED',
+  'Quota exceeded',
+  'FirebaseError',
+  'GrpcConnection',
+]);
 
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <AuthProvider>
+      <TurnoProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#0f172a' },
+            animation: 'fade',
+          }}
+        />
+      </TurnoProvider>
+    </AuthProvider>
   );
 }

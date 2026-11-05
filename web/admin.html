@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Administrativo – GPS Recolectores</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <!-- Firebase compat CDN -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --card: rgba(255,255,255,0.08);
+      --border: rgba(255,255,255,0.12);
+      --cyan: #00f2fe;
+      --blue: #4facfe;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --green: #22c55e;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --violet: #a855f7;
+    }
+    body {
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== LOGIN PAGE ===== */
+    #login-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 380px;
+    }
+    .login-logo { font-size: 48px; text-align: center; margin-bottom: 12px; }
+    .login-title {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--cyan);
+      margin-bottom: 4px;
+    }
+    .login-sub {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--cyan); }
+    .btn-primary {
+      width: 100%;
+      background: var(--cyan);
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 1.2px;
+      border: none;
+      border-radius: 12px;
+      padding: 13px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .error-msg {
+      color: var(--red);
+      font-size: 12px;
+      text-align: center;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+
+    /* ===== DASHBOARD PAGE ===== */
+    #dashboard-page { display: none; }
+
+    /* Header */
+    .dash-header {
+      background: rgba(15,23,42,0.95);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .dash-header-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--cyan);
+    }
+    .dash-header-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .btn-logout {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn-logout:hover { opacity: 0.75; }
+
+    /* Main content */
+    .dash-content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+    /* Filters */
+    .filter-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+    .filter-input, .filter-select {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      min-width: 160px;
+    }
+    .filter-input:focus, .filter-select:focus { border-color: var(--cyan); }
+    .filter-select option { background: #1e293b; }
+    .btn-filter {
+      background: var(--cyan);
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 13px;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .btn-filter:hover { opacity: 0.85; }
+
+    /* KPI grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .kpi-emoji { font-size: 24px; }
+    .kpi-value { font-size: 28px; font-weight: 800; color: var(--cyan); line-height: 1; }
+    .kpi-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+
+    /* Charts + table row */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 860px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+    .section-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .chart-wrapper { position: relative; height: 260px; }
+
+    /* Table */
+    .table-wrapper { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead th {
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: rgba(255,255,255,0.04); }
+    tbody td {
+      padding: 9px 10px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid;
+    }
+    .badge-progress { color: var(--green); background: rgba(34,197,94,0.12); border-color: var(--green); }
+    .badge-done     { color: var(--muted); background: rgba(148,163,184,0.1); border-color: rgba(148,163,184,0.3); }
+    .loading-msg { color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+  </style>
+</head>
+<body>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">📊</div>
+    <div class="login-title">Dashboard Administrativo</div>
+    <div class="login-sub">GPS Recolectores · Oruro, Bolivia</div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="login-email" placeholder="admin@empresa.com" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Contraseña</label>
+      <input type="password" class="form-input" id="login-password" placeholder="••••••••" />
+    </div>
+    <button class="btn-primary" onclick="doLogin()">INGRESAR AL DASHBOARD</button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD PAGE ===== -->
+<div id="dashboard-page">
+  <header class="dash-header">
+    <div>
+      <div class="dash-header-title">🚛 Dashboard Administrativo – GPS Recolectores</div>
+      <div class="dash-header-sub">Oruro, Bolivia</div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button style="background:rgba(0,242,254,0.15); border:1px solid rgba(0,242,254,0.4); color:var(--cyan); font-size:12px; font-weight:700; padding:7px 14px; border-radius:8px; cursor:pointer;" onclick="window.location.href='index.html'">🗺️ Mapa Público</button>
+      <button class="btn-logout" onclick="doLogout()">🚪 Cerrar Sesión</button>
+    </div>
+  </header>
+
+  <div class="dash-content">
+    <!-- Filters -->
+    <div class="filter-card">
+      <div class="filter-group">
+        <label class="filter-label">Fecha</label>
+        <input type="date" class="filter-input" id="filter-date" />
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Turno</label>
+        <select class="filter-select" id="filter-turno">
+          <option value="">Todos</option>
+          <option value="mañana">Mañana ☀️</option>
+          <option value="tarde">Tarde 🌅</option>
+          <option value="noche">Noche 🌙</option>
+        </select>
+      </div>
+      <button class="btn-filter" onclick="applyFilters()">🔍 Aplicar Filtro</button>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-emoji">⛽</span>
+        <span class="kpi-value" id="kpi-litros">0.00</span>
+        <span class="kpi-label">Litros Totales</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-emoji">📍</span>
+        <span class="kpi-value" id="kpi-km">0.00</span>
+        <span class="kpi-label">KM Totales</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-emoji">🔄</span>
+        <span class="kpi-value" id="kpi-compresiones">0</span>
+        <span class="kpi-label">Total Compresiones</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-emoji">📊</span>
+        <span class="kpi-value" id="kpi-eficiencia">0.00</span>
+        <span class="kpi-label">Eficiencia L/km</span>
+      </div>
+    </div>
+
+    <!-- Bottom grid: chart + table -->
+    <div class="bottom-grid">
+      <!-- Chart -->
+      <div class="section-card">
+        <div class="section-title">⛽ Consumo por Estado Operativo</div>
+        <div class="chart-wrapper">
+          <canvas id="consumoChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Turnos table -->
+      <div class="section-card">
+        <div class="section-title">📋 Registro de Turnos</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Turno</th>
+                <th>KM</th>
+                <th>Litros</th>
+                <th>Comp.</th>
+                <th>Tiempo (min)</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="turnos-tbody">
+              <tr><td colspan="7" class="loading-msg">Cargando datos…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Firebase init
+  const firebaseConfig = {
+    apiKey: "AIzaSyClVtCYv6bMIOi9vuN_KiUL4bgKuyGG57o",
+    authDomain: "appmonitoreo-87a54.firebaseapp.com",
+    projectId: "appmonitoreo-87a54",
+    storageBucket: "appmonitoreo-87a54.firebasestorage.app",
+    messagingSenderId: "889911178649",
+    appId: "1:889911178649:web:83a8f739a2884751020f08"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  let consumoChart = null;
+
+  // Auth state
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      showDashboard();
+    } else {
+      showLogin();
+    }
+  });
+
+  function showLogin() {
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('dashboard-page').style.display = 'none';
+  }
+
+  function showDashboard() {
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('dashboard-page').style.display = 'block';
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('filter-date').value = today;
+    initChart();
+    applyFilters();
+  }
+
+  async function doLogin() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl    = document.getElementById('login-error');
+    errEl.textContent = '';
+    if (!email || !password) { errEl.textContent = 'Ingresa email y contraseña.'; return; }
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+    } catch (err) {
+      const code = err.code || '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        errEl.textContent = 'Email o contraseña incorrectos.';
+      } else {
+        errEl.textContent = 'Error al ingresar. Intenta de nuevo.';
+      }
+    }
+  }
+
+  async function doLogout() {
+    await auth.signOut();
+  }
+
+  // Press Enter to login
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.getElementById('login-page').style.display !== 'none') {
+      doLogin();
+    }
+  });
+
+  function initChart() {
+    const ctx = document.getElementById('consumoChart').getContext('2d');
+    consumoChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Tránsito', 'Recolección', 'Ralentí', 'Compresión'],
+        datasets: [{
+          label: 'Litros estimados',
+          data: [0, 0, 0, 0],
+          backgroundColor: [
+            'rgba(34,197,94,0.7)',
+            'rgba(245,158,11,0.7)',
+            'rgba(239,68,68,0.7)',
+            'rgba(168,85,247,0.7)',
+          ],
+          borderColor: ['#22c55e', '#f59e0b', '#ef4444', '#a855f7'],
+          borderWidth: 1.5,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.parsed.y.toFixed(2)} L`,
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#94a3b8', font: { size: 11 } },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+          },
+          y: {
+            ticks: { color: '#94a3b8', font: { size: 11 }, callback: (v) => v.toFixed(1) + ' L' },
+            grid: { color: 'rgba(255,255,255,0.05)' },
+            beginAtZero: true,
+          }
+        }
+      }
+    });
+  }
+
+  async function applyFilters() {
+    const fecha  = document.getElementById('filter-date').value;
+    const turno  = document.getElementById('filter-turno').value;
+
+    const tbody = document.getElementById('turnos-tbody');
+    tbody.innerHTML = '<tr><td colspan="7" class="loading-msg">Cargando…</td></tr>';
+
+    try {
+      let query = db.collection('turnos_recoleccion').orderBy('horaInicio', 'desc');
+
+      if (fecha) {
+        query = query.where('fecha', '==', fecha);
+      }
+      if (turno) {
+        query = query.where('turno', '==', turno);
+      }
+
+      const snap = await query.limit(100).get();
+      const docs = snap.docs.map((d) => d.data());
+
+      if (docs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="loading-msg">Sin registros para los filtros seleccionados.</td></tr>';
+        resetKPIs();
+        updateChart([], [], [], []);
+        return;
+      }
+
+      // Aggregate KPIs
+      let totalLitros = 0, totalKm = 0, totalComp = 0;
+      let sumTransito = 0, sumRecoleccion = 0, sumRalenti = 0, sumCompresion = 0;
+
+      docs.forEach((d) => {
+        totalLitros     += d.litrosEstimados      || 0;
+        totalKm         += d.kmRecorridos         || 0;
+        totalComp       += d.ciclosCompresion     || 0;
+        sumTransito     += d.tiempoTransitoMin    || 0;
+        sumRecoleccion  += d.tiempoRecoleccionMin || 0;
+        sumRalenti      += d.tiempoRalentiMin     || 0;
+        sumCompresion   += d.tiempoCompresionMin  || 0;
+      });
+
+      // Estimate litros per state (proportional by time)
+      const totalMin = sumTransito + sumRecoleccion + sumRalenti + sumCompresion;
+      const litrosTransito    = totalMin > 0 ? (sumTransito    / totalMin) * totalLitros : 0;
+      const litrosRecoleccion = totalMin > 0 ? (sumRecoleccion / totalMin) * totalLitros : 0;
+      const litrosRalenti     = totalMin > 0 ? (sumRalenti     / totalMin) * totalLitros : 0;
+      const litrosCompresion  = totalMin > 0 ? (sumCompresion  / totalMin) * totalLitros : 0;
+
+      // Update KPIs
+      document.getElementById('kpi-litros').textContent       = totalLitros.toFixed(2);
+      document.getElementById('kpi-km').textContent           = totalKm.toFixed(2);
+      document.getElementById('kpi-compresiones').textContent = totalComp;
+      document.getElementById('kpi-eficiencia').textContent   = totalKm > 0 ? (totalLitros / totalKm).toFixed(2) : '0.00';
+
+      // Update chart
+      updateChart([litrosTransito, litrosRecoleccion, litrosRalenti, litrosCompresion]);
+
+      // Build table rows
+      const turnoLabels = { 'mañana': '☀️ Mañana', 'tarde': '🌅 Tarde', 'noche': '🌙 Noche' };
+      tbody.innerHTML = docs.map((d) => {
+        const tiempoTotal = Math.round(
+          (d.tiempoTransitoMin || 0) + (d.tiempoRecoleccionMin || 0) +
+          (d.tiempoRalentiMin  || 0) + (d.tiempoCompresionMin  || 0)
+        );
+        const estadoClass = d.estadoTurno === 'en_progreso' ? 'badge-progress' : 'badge-done';
+        const estadoLabel = d.estadoTurno === 'en_progreso' ? '🟢 En Progreso' : '✅ Finalizado';
+        return `<tr>
+          <td>${d.fecha || '—'}</td>
+          <td>${turnoLabels[d.turno] || d.turno || '—'}</td>
+          <td>${(d.kmRecorridos || 0).toFixed(2)}</td>
+          <td>${(d.litrosEstimados || 0).toFixed(2)}</td>
+          <td>${d.ciclosCompresion || 0}</td>
+          <td>${tiempoTotal}</td>
+          <td><span class="badge ${estadoClass}">${estadoLabel}</span></td>
+        </tr>`;
+      }).join('');
+
+    } catch (err) {
+      console.error('Error al cargar datos:', err);
+      tbody.innerHTML = `<tr><td colspan="7" class="loading-msg" style="color:var(--red)">Error al cargar datos: ${err.message}</td></tr>`;
+      resetKPIs();
+    }
+  }
+
+  function updateChart(data) {
+    if (!consumoChart) return;
+    consumoChart.data.datasets[0].data = data;
+    consumoChart.update();
+  }
+
+  function resetKPIs() {
+    document.getElementById('kpi-litros').textContent       = '0.00';
+    document.getElementById('kpi-km').textContent           = '0.00';
+    document.getElementById('kpi-compresiones').textContent = '0';
+    document.getElementById('kpi-eficiencia').textContent   = '0.00';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "camiones": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
+
